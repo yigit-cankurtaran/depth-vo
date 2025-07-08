@@ -7,11 +7,17 @@ import torch
 midas = timm.create_model('vit_small_patch16_224', pretrained=True).eval().to('mps')
 
 cap   = cv2.VideoCapture('processed.mp4')
+fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+w0 = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+h0 = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+writer = cv2.VideoWriter("marked.mp4", fourcc, fps, (w0,h0)) # saving new video
+
 prev_gray = None
 poses = []
 
-# scale is good enough as seen by the graph and results
-K = None
+K = None # camera intrinsics set on first frame
+colors = np.random.randint(64, 255, (1000, 3)).tolist() # random colors for flow viz
 
 while cap.isOpened():
     ok, frame = cap.read()
@@ -19,7 +25,7 @@ while cap.isOpened():
         break
 
     # rgb -> depth -----------------------------------------------------------
-    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # opencv reads BGR,pytorch and timm expect RGB
+    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # opencv reads BGR libs expect RGB
     h, w = rgb.shape[:2]
     if K is None:  # build camera matrix once
         fx = fy = 0.9 * w
@@ -35,6 +41,8 @@ while cap.isOpened():
     depth = cv2.resize(pred.squeeze().cpu().numpy(), (w, h), interpolation=cv2.INTER_CUBIC)
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    draw = frame.copy()
+    
     if prev_gray is not None:
         p0 = cv2.goodFeaturesToTrack(prev_gray, 1000, 0.01, 10) # grabbing corners
         p1, st, _ = cv2.calcOpticalFlowPyrLK(prev_gray, gray, p0, None) # using lucas-kanade
@@ -42,18 +50,28 @@ while cap.isOpened():
         # st = 1 if track survives, 0 if it loses corner
         if p1 is None:
             prev_gray = gray
+            writer.write(draw)
             continue
 
         p0 = p0[st==1].astype(np.float32)
         p1 = p1[st==1].astype(np.float32)
         if len(p0) < 6: # need 4, keep margin
             prev_gray = gray
+            writer.write(draw)
             continue
 
         # prev_gray is None at the start, just store the frame
         # from the 2nd frame on we grab corners
         # p1 is the LK prediction of the new position
         # if not enough valid pairs, continue
+
+        # optical flow vectors
+        for i,(a,b,) in enumerate(zip(p0, p1)):
+            c = colors[i % len(colors)]
+            a = tuple(a.ravel().astype(int))
+            b = tuple(b.ravel().astype(int))
+            cv2.circle(draw, b, 2, c, -1) # new position
+            cv2.line(draw, a, b, c, 1) # motion vector
 
         # depth -> 3-d (camera coords)
         z = depth[p0[:,1].astype(int), p0[:,0].astype(int)] # ,1 is ys, ,0 is xs
@@ -77,7 +95,18 @@ while cap.isOpened():
             if ok: # flatten and concat the vectors into a 6 float row, append to poses
                 poses.append(np.hstack([tvec.flatten(), rvec.flatten()]))
 
+                # draw translation on frame
+                tx, ty, tz = tvec.flatten()
+                info = f"t: [{tx:.2f}, {ty:.2f}, {tz:.2f}] m"
+                cv2.putText(draw, info, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6,
+                            (255, 255, 255), 2, cv2.LINE_AA)
+
     prev_gray = gray # next loop, this frame becomes the previous one
+    writer.write(draw)
+
+    #cleanup
+cap.release()
+writer.release()
 
 # dump
 if poses:
