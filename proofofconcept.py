@@ -101,9 +101,10 @@ while cap.isOpened():
                 # draw translation on frame
                 tx, ty, tz = tvec.flatten()
                 # tvec = current cam translation relative to the prev
-                info = f"t: [{tx:.2f}, {ty:.2f}, {tz:.2f}] m"
+                info = f"t: [{tx:.3f}, {ty:.3f}, {tz:.3f}] m"
                 cv2.putText(draw, info, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6,
                             (255, 255, 255), 2, cv2.LINE_AA)
+                # might look kinda low, it's frame by frame
 
     prev_gray = gray # next loop, this frame becomes the previous one
     writer.write(draw)
