@@ -67,11 +67,11 @@ while cap.isOpened():
 
         # optical flow vectors
         for i,(a,b,) in enumerate(zip(p0, p1)):
-            c = colors[i % len(colors)]
-            a = tuple(a.ravel().astype(int))
-            b = tuple(b.ravel().astype(int))
-            cv2.circle(draw, b, 2, c, -1) # new position
-            cv2.line(draw, a, b, c, 1) # motion vector
+            c = colors[i % len(colors)] # random color for each point
+            a = tuple(a.ravel().astype(int)) # previous corner (x,y)
+            b = tuple(b.ravel().astype(int)) #new corner
+            cv2.circle(draw, b, 2, c, -1) # dot at new position
+            cv2.line(draw, a, b, c, 1) # motion vector (from old to new)
 
         # depth -> 3-d (camera coords)
         z = depth[p0[:,1].astype(int), p0[:,0].astype(int)] # ,1 is ys, ,0 is xs
@@ -95,8 +95,12 @@ while cap.isOpened():
             if ok: # flatten and concat the vectors into a 6 float row, append to poses
                 poses.append(np.hstack([tvec.flatten(), rvec.flatten()]))
 
+                #rvec = rotation in rodrigues
+                #rodrigues = 3d axis scaled by rotation angle
+
                 # draw translation on frame
                 tx, ty, tz = tvec.flatten()
+                # tvec = current cam translation relative to the prev
                 info = f"t: [{tx:.2f}, {ty:.2f}, {tz:.2f}] m"
                 cv2.putText(draw, info, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6,
                             (255, 255, 255), 2, cv2.LINE_AA)
@@ -104,7 +108,7 @@ while cap.isOpened():
     prev_gray = gray # next loop, this frame becomes the previous one
     writer.write(draw)
 
-    #cleanup
+#cleanup
 cap.release()
 writer.release()
 
