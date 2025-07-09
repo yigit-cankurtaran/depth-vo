@@ -5,13 +5,13 @@ import numpy as np
 import time
 
 # depth net (vit-small)
-midas = timm.create_model('vit_small_patch16_224',
+midas = timm.create_model('vit_tiny_patch16_224',
                           pretrained=True).eval().to('mps')
 
 # webcam
 cap = cv2.VideoCapture(0, cv2.CAP_AVFOUNDATION)  # macbook cam
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)          # ask for 720p
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)          # ask for 640x480
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 cap.set(cv2.CAP_PROP_FPS, 30)
 
 prev_gray = None
@@ -48,8 +48,9 @@ while True:
     draw = frame.copy()
 
     if prev_gray is not None:
-        p0 = cv2.goodFeaturesToTrack(prev_gray, 1000, 0.01, 10)
-        p1, st, _ = cv2.calcOpticalFlowPyrLK(prev_gray, gray, p0, None)
+        p0 = cv2.goodFeaturesToTrack(prev_gray, 500, 0.01, 10) # cutting corners to half
+        p1, st, _ = cv2.calcOpticalFlowPyrLK(prev_gray, gray, p0, None,
+                                             winSize=(15,15), maxLevel=2)
         if p1 is not None:
             p0 = p0[st == 1].astype(np.float32)
             p1 = p1[st == 1].astype(np.float32)
