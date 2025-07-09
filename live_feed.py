@@ -5,7 +5,7 @@ import numpy as np
 import time
 
 # depth net (vit-small)
-midas = timm.create_model('vit_tiny_patch16_224',
+midas = timm.create_model('vit_small_patch16_224',
                           pretrained=True).eval().to('mps')
 
 # webcam
