@@ -19,6 +19,8 @@ K = None # intrinsics (camera matrix) filled on first frame
 colors = np.random.randint(64, 255, (1000, 3)).tolist()
 
 fps_ema, t0 = 0.0, time.time() # fps monitor
+poses_live = [] # per-frame pose rows
+
 
 while True:
     ok, frame = cap.read()
@@ -85,6 +87,10 @@ while True:
                                     (10, 30), cv2.FONT_HERSHEY_SIMPLEX,
                                     0.6, (255, 255, 255), 2, cv2.LINE_AA)
 
+                        poses_live.append(
+                            np.hstack([tvec.flatten(), rvec.flatten()])
+                        )
+
     prev_gray = gray
 
     # fps diagnostics
@@ -100,3 +106,9 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
+
+if poses_live:
+    np.savetxt('poses_live.csv', np.vstack(poses_live), delimiter=',')
+    print(f"saved {len(poses_live)} rows to poses_live.csv")
+else:
+    print("no poses captured, check lighting/texture/both")
