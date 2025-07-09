@@ -1,17 +1,34 @@
+import pathlib
+import sys
+
 import cv2
 import numpy as np
 import timm
 import torch
 
-# ---- depth net (224-224 vit) ----
-midas = timm.create_model('vit_small_patch16_224', pretrained=True).eval().to('mps')
+# io setup
+in_path = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "processed.mp4")
+if not in_path.exists():
+    raise FileNotFoundError(in_path)
 
-cap   = cv2.VideoCapture('processed.mp4')
-fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+ext = in_path.suffix.lower()
+if ext in (".mp4", ".m4v", ".mov"):
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+elif ext == ".avi":
+    fourcc = cv2.VideoWriter_fourcc(*"XVID")
+else: # fallback, still mp4v
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+
+out_path = in_path.with_stem(in_path.stem + "_marked") # foo.mp4 to foo_marked.mp4
+
+cap   = cv2.VideoCapture(str(in_path))
 fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
 w0 = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 h0 = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-writer = cv2.VideoWriter("marked.mp4", fourcc, fps, (w0,h0)) # saving new video
+writer = cv2.VideoWriter(str(out_path), fourcc, fps, (w0,h0)) # saving new video
+
+# ---- depth net (224-224 vit) ----
+midas = timm.create_model('vit_small_patch16_224', pretrained=True).eval().to('mps')
 
 prev_gray = None
 poses = []
