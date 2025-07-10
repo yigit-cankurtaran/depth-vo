@@ -1,3 +1,4 @@
 *.mp4
 !output_trim.mp4
 *.gif
+!demo.gif
