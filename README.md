@@ -7,7 +7,7 @@ works both on pre-shot footage (recorded as any filetype) and on a live feed.
 
 ## hallway demo – live feed
 
-<video src="output_trim.mov" width="640" loop autoplay muted></video>
+<video src="output_trim_small.mov" width="640" loop autoplay muted></video>
 
 <br/>
 
